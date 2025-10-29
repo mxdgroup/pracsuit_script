@@ -1,0 +1,113 @@
+================================================================================
+PostgreSQL Database Reader - Complete Overview
+================================================================================
+
+[DATABASE SUMMARY]
+--------------------------------------------------------------------------------
+
+Total Clinic Databases: 3
+Total Tables Across All Databases: 3
+Total Rows Across All Databases: 204
+
+--------------------------------------------------------------------------------
+
+[1] Database: supertest
+    Tables: 1
+    Total Rows: 68
+
+    Table Details:
+      - appointments                           68 rows
+    ----------------------------------------------------------------------------
+
+[2] Database: testclinic
+    Tables: 1
+    Total Rows: 68
+
+    Table Details:
+      - appointments                           68 rows
+    ----------------------------------------------------------------------------
+
+[3] Database: democlinic
+    Tables: 1
+    Total Rows: 68
+
+    Table Details:
+      - appointments                           68 rows
+    ----------------------------------------------------------------------------
+
+
+[DETAILED ANALYSIS: supertest]
+--------------------------------------------------------------------------------
+
+Appointment Statistics:
+  Total appointments: 68
+
+  By Status:
+    - Confirmed                        55 appointments
+    - Cancelled                         8 appointments
+    - No Show                           5 appointments
+
+  Top 5 Practitioners:
+    1. Dr. Sarah Johnson                      15 appointments
+    2. Dr. Michael Smith                      12 appointments
+    3. Dr. Emily Brown                        10 appointments
+    4. Dr. David Wilson                        8 appointments
+    5. Dr. Lisa Anderson                       7 appointments
+
+  Top 5 Appointment Types:
+    1. Consultation                           25 appointments
+    2. Follow-up                              18 appointments
+    3. Initial Assessment                     12 appointments
+    4. Therapy Session                         8 appointments
+    5. Review                                  5 appointments
+
+  Date Range:
+    Earliest: 2025-10-28 07:30:00
+    Latest:   2025-10-28 18:45:00
+
+
+Recent Appointments (last 3):
+--------------------------------------------------------------------------------
+
+================================================================================
+Appointment ID: 123459
+Date: 2025-10-28 18:45:00
+Client: John Doe (ID: 789)
+Practitioner: Dr. Sarah Johnson
+Type: Consultation
+Status: Confirmed
+Duration: 30.0 min
+Business: Main Clinic
+================================================================================
+
+================================================================================
+Appointment ID: 123458
+Date: 2025-10-28 18:30:00
+Client: Jane Smith (ID: 790)
+Practitioner: Dr. Michael Smith
+Type: Follow-up
+Status: Confirmed
+Duration: 45.0 min
+Business: Main Clinic
+================================================================================
+
+================================================================================
+Appointment ID: 123457
+Date: 2025-10-28 18:00:00
+Client: Bob Wilson (ID: 791)
+Practitioner: Dr. Emily Brown
+Type: Initial Assessment
+Status: Confirmed
+Duration: 60.0 min
+Business: West Branch
+================================================================================
+
+[EXPORT] Saving sample to JSON...
+Data exported to: appointments_supertest_sample.json
+
+================================================================================
+Query completed!
+================================================================================
+
+Tip: Run 'python read_db.py --interactive' for interactive query mode
+

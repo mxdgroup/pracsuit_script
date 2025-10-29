@@ -1,16 +1,26 @@
 /**
- * Google Apps Script to forward emails to FastAPI endpoint
+ * Google Apps Script to forward emails with attachments to FastAPI endpoint
+ * 
+ * Features:
+ * - Forwards email metadata and content
+ * - Base64 encodes and sends attachments
+ * - Marks emails as read after processing
+ * - Adds "Forwarded" label to processed emails
  * 
  * Setup Instructions:
  * 1. Go to https://script.google.com/
  * 2. Create a new project
  * 3. Paste this code
- * 4. Set up a time-driven trigger to run checkEmails() every minute/5 minutes
- * 5. Update the FASTAPI_ENDPOINT with your actual endpoint URL
+ * 4. Update the FASTAPI_ENDPOINT with your actual endpoint URL
+ * 5. Run manualTrigger() once to authorize the script
+ * 6. Set up a time-driven trigger to run checkEmails() every 5 minutes
+ * 
+ * Important: This script now sends attachment data as base64
+ * Make sure your FastAPI endpoint can handle large payloads for Excel files
  */
 
 // Configuration
-const FASTAPI_ENDPOINT = "YOUR_FASTAPI_URL/webhook/email"; // Replace with your actual URL
+const FASTAPI_ENDPOINT = "https://joann-premoral-ayla.ngrok-free.dev/webhook/email";
 const LABEL_NAME = "Forwarded"; // Label to mark processed emails
 
 function checkEmails() {
@@ -67,14 +77,16 @@ function forwardEmailToAPI(message) {
     // Process attachments
     const attachments = message.getAttachments();
     if (attachments.length > 0) {
+      Logger.log(`Found ${attachments.length} attachment(s)`);
       attachments.forEach(attachment => {
-        emailData.attachments.push({
+        const attachmentData = {
           name: attachment.getName(),
           size: attachment.getSize(),
           contentType: attachment.getContentType(),
-          // Base64 encode the attachment if you want to send it
-          // data: Utilities.base64Encode(attachment.getBytes())
-        });
+          data: Utilities.base64Encode(attachment.getBytes()) // Base64 encode for transmission
+        };
+        emailData.attachments.push(attachmentData);
+        Logger.log(`Attachment: ${attachmentData.name} (${attachmentData.size} bytes)`);
       });
     }
     

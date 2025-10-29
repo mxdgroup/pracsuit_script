@@ -10,3 +10,6 @@ ENV/
 email_logs.log
 emails/
 *.log
+*.xlsx
+*.xls
+test_db_setup.py
