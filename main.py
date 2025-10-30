@@ -66,16 +66,25 @@ def extract_clinic_name(email_address: str) -> str:
 
 def extract_table_name(filename: str) -> str:
     """
-    Extract table name from filename (first word)
-    Example: "Appointment Report 281025_1151PM.xlsx" -> "appointments"
+    Extract table name from filename
+    Example: 
+      "Appointment Report 281025_1151PM.xlsx" -> "appointments"
+      "Client List Report 291025_0710PM.xlsx" -> "clients"
     """
-    # Get first word from filename
-    first_word = filename.split()[0] if filename else ""
-    # Convert to lowercase and add 's' if not already plural
-    table_name = first_word.lower()
-    if table_name and not table_name.endswith('s'):
-        table_name += 's'
-    return table_name
+    filename_lower = filename.lower()
+    
+    # Check for known report types
+    if filename_lower.startswith('appointment'):
+        return 'appointments'
+    elif filename_lower.startswith('client list'):
+        return 'clients'
+    else:
+        # Fallback: get first word and pluralize
+        first_word = filename.split()[0] if filename else ""
+        table_name = first_word.lower()
+        if table_name and not table_name.endswith('s'):
+            table_name += 's'
+        return table_name
 
 
 def get_db_connection(database_name: str = None):
@@ -197,9 +206,100 @@ def create_appointments_table(database_name: str):
         return False
 
 
+def create_clients_table(database_name: str):
+    """Create clients table in the specified database"""
+    try:
+        conn = get_db_connection(database_name)
+        cursor = conn.cursor()
+        
+        # Create clients table with schema matching Excel structure
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS clients (
+            id SERIAL PRIMARY KEY,
+            title VARCHAR(50),
+            first_name VARCHAR(255),
+            preferred_name VARCHAR(255),
+            middle VARCHAR(255),
+            surname VARCHAR(255),
+            date_of_birth VARCHAR(50),
+            address_line_1 VARCHAR(255),
+            address_line_2 VARCHAR(255),
+            address_line_3 VARCHAR(255),
+            address_line_4 VARCHAR(255),
+            country VARCHAR(100),
+            state VARCHAR(100),
+            suburb VARCHAR(100),
+            postcode VARCHAR(20),
+            preferred_phone VARCHAR(50),
+            work_phone VARCHAR(50),
+            home_phone VARCHAR(50),
+            mobile VARCHAR(50),
+            fax VARCHAR(50),
+            email VARCHAR(255),
+            file_no BIGINT,
+            gender VARCHAR(50),
+            pronouns VARCHAR(50),
+            sex VARCHAR(50),
+            archived VARCHAR(10),
+            notes TEXT,
+            warnings TEXT,
+            fee_category VARCHAR(255),
+            practitioner VARCHAR(255),
+            medicare_no VARCHAR(50),
+            medicare_irn VARCHAR(50),
+            medicare_expiry VARCHAR(50),
+            dva_no VARCHAR(50),
+            dva_type VARCHAR(50),
+            concession_no VARCHAR(50),
+            concession_expiry VARCHAR(50),
+            health_fund VARCHAR(255),
+            health_fund_member_no VARCHAR(50),
+            ndis_no VARCHAR(50),
+            created_date TIMESTAMP,
+            consent_date TIMESTAMP,
+            privacy_policy_date TIMESTAMP,
+            client_id BIGINT UNIQUE,
+            gp_name VARCHAR(255),
+            db_created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            db_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+        
+        cursor.execute(create_table_query)
+        
+        # Create indexes for common queries
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_clients_client_id 
+            ON clients(client_id)
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_clients_email 
+            ON clients(email)
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_clients_surname 
+            ON clients(surname)
+        """)
+        
+        conn.commit()
+        logger.info(f"Clients table created successfully in database '{database_name}'")
+        
+        cursor.close()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f"Error creating clients table: {e}")
+        return False
+
+
 def parse_excel_from_base64(base64_data: str, filename: str):
     """Parse Excel file from base64 encoded data"""
     try:
+        # Check if file is actually an Excel file
+        if not filename.lower().endswith(('.xlsx', '.xls')):
+            logger.warning(f"Skipping non-Excel file: {filename}")
+            return None
+        
         # Decode base64 data
         excel_bytes = base64.b64decode(base64_data)
         
@@ -213,8 +313,8 @@ def parse_excel_from_base64(base64_data: str, filename: str):
         return None
 
 
-def map_excel_columns_to_db(df: pd.DataFrame):
-    """Map Excel column names to database column names"""
+def map_appointments_columns_to_db(df: pd.DataFrame):
+    """Map Appointment Excel column names to database column names"""
     # Column mapping from Excel to database
     column_mapping = {
         'Appointment Date': 'appointment_date',
@@ -249,6 +349,108 @@ def map_excel_columns_to_db(df: pd.DataFrame):
     return df_mapped
 
 
+def map_clients_columns_to_db(df: pd.DataFrame):
+    """Map Client List Excel column names to database column names"""
+    # Column mapping from Excel to database
+    column_mapping = {
+        'Title': 'title',
+        'First Name': 'first_name',
+        'Preferred Name': 'preferred_name',
+        'Middle': 'middle',
+        'Surname': 'surname',
+        'Date of Birth': 'date_of_birth',
+        'Address Line 1': 'address_line_1',
+        'Address Line 2': 'address_line_2',
+        'Address Line 3': 'address_line_3',
+        'Address Line 4': 'address_line_4',
+        'Country': 'country',
+        'State': 'state',
+        'Suburb': 'suburb',
+        'Postcode': 'postcode',
+        'Preferred Phone': 'preferred_phone',
+        'Work Phone': 'work_phone',
+        'Home Phone': 'home_phone',
+        'Mobile': 'mobile',
+        'Fax': 'fax',
+        'Email': 'email',
+        'File No': 'file_no',
+        'Gender': 'gender',
+        'Pronouns': 'pronouns',
+        'Sex': 'sex',
+        'Archived': 'archived',
+        'Notes': 'notes',
+        'Warnings': 'warnings',
+        'Fee Category': 'fee_category',
+        'Practitioner': 'practitioner',
+        'Medicare No': 'medicare_no',
+        'Medicare IRN': 'medicare_irn',
+        'Medicare Expiry': 'medicare_expiry',
+        'DVA No': 'dva_no',
+        'DVA Type': 'dva_type',
+        'Concession No': 'concession_no',
+        'Concession Expiry': 'concession_expiry',
+        'Health Fund': 'health_fund',
+        'Health Fund Member No': 'health_fund_member_no',
+        'NDIS No': 'ndis_no',
+        'Created Date': 'created_date',
+        'Consent Date': 'consent_date',
+        'Privacy Policy Date': 'privacy_policy_date',
+        'Client ID': 'client_id',
+        'GP Name': 'gp_name'
+    }
+    
+    # Rename columns
+    df_mapped = df.rename(columns=column_mapping)
+    
+    # Convert NaN to None for non-date columns first
+    df_mapped = df_mapped.where(pd.notna(df_mapped), None)
+    
+    # Handle date columns LAST - after all NaN conversions
+    date_columns = ['created_date', 'consent_date', 'privacy_policy_date']
+    for col in date_columns:
+        if col in df_mapped.columns:
+            # Convert values to datetime, handling None values
+            converted_dates = []
+            for val in df_mapped[col]:
+                if val is None or (isinstance(val, float) and pd.isna(val)):
+                    # Already None or NaN - keep as None
+                    converted_dates.append(None)
+                else:
+                    # Try to convert to datetime
+                    try:
+                        dt = pd.to_datetime(val, errors='coerce')
+                        if pd.notna(dt):
+                            converted_dates.append(dt.to_pydatetime())
+                        else:
+                            converted_dates.append(None)
+                    except:
+                        converted_dates.append(None)
+            
+            df_mapped[col] = converted_dates
+    
+    return df_mapped
+
+
+def clean_db_value(value):
+    """Normalize values before inserting into the database"""
+    if value is None:
+        return None
+    # Handle pandas NaT/NaN generically
+    try:
+        if pd.isna(value):
+            return None
+    except Exception:
+        pass
+    # Handle pandas NaT / NaN
+    if isinstance(value, float) and pd.isna(value):
+        return None
+    if isinstance(value, str) and value.strip().lower() == 'nat':
+        return None
+    if isinstance(value, pd.Timestamp):
+        return value.to_pydatetime()
+    return value
+
+
 def insert_appointments_data(database_name: str, df: pd.DataFrame):
     """Insert appointment data into the database with upsert to avoid duplicates"""
     try:
@@ -256,7 +458,13 @@ def insert_appointments_data(database_name: str, df: pd.DataFrame):
         cursor = conn.cursor()
         
         # Map columns
-        df_mapped = map_excel_columns_to_db(df)
+        df_mapped = map_appointments_columns_to_db(df)
+        
+        # Remove duplicates based on appointment_id (keep last occurrence)
+        # This prevents "ON CONFLICT DO UPDATE command cannot affect row a second time" error
+        if 'appointment_id' in df_mapped.columns:
+            df_mapped = df_mapped.drop_duplicates(subset=['appointment_id'], keep='last')
+            logger.info(f"After deduplication: {len(df_mapped)} unique appointments")
         
         # Prepare columns list (excluding id, created_at, updated_at which are auto-generated)
         db_columns = [
@@ -270,7 +478,7 @@ def insert_appointments_data(database_name: str, df: pd.DataFrame):
         # Prepare data tuples
         data_tuples = []
         for _, row in df_mapped.iterrows():
-            row_data = tuple(row[col] if col in row else None for col in db_columns)
+            row_data = tuple(clean_db_value(row[col]) if col in row else None for col in db_columns)
             data_tuples.append(row_data)
         
         # Prepare INSERT ... ON CONFLICT (UPSERT) query
@@ -316,6 +524,82 @@ def insert_appointments_data(database_name: str, df: pd.DataFrame):
         }
 
 
+def insert_clients_data(database_name: str, df: pd.DataFrame):
+    """Insert client data into the database with upsert to avoid duplicates"""
+    try:
+        conn = get_db_connection(database_name)
+        cursor = conn.cursor()
+        
+        # Map columns
+        df_mapped = map_clients_columns_to_db(df)
+        
+        # Remove duplicates based on client_id (keep last occurrence)
+        # This prevents "ON CONFLICT DO UPDATE command cannot affect row a second time" error
+        if 'client_id' in df_mapped.columns:
+            df_mapped = df_mapped.drop_duplicates(subset=['client_id'], keep='last')
+            logger.info(f"After deduplication: {len(df_mapped)} unique clients")
+        
+        # Prepare columns list (excluding id, db_created_at, db_updated_at which are auto-generated)
+        db_columns = [
+            'title', 'first_name', 'preferred_name', 'middle', 'surname', 'date_of_birth',
+            'address_line_1', 'address_line_2', 'address_line_3', 'address_line_4',
+            'country', 'state', 'suburb', 'postcode', 'preferred_phone', 'work_phone',
+            'home_phone', 'mobile', 'fax', 'email', 'file_no', 'gender', 'pronouns',
+            'sex', 'archived', 'notes', 'warnings', 'fee_category', 'practitioner',
+            'medicare_no', 'medicare_irn', 'medicare_expiry', 'dva_no', 'dva_type',
+            'concession_no', 'concession_expiry', 'health_fund', 'health_fund_member_no',
+            'ndis_no', 'created_date', 'consent_date', 'privacy_policy_date', 'client_id',
+            'gp_name'
+        ]
+        
+        # Prepare data tuples
+        data_tuples = []
+        for _, row in df_mapped.iterrows():
+            row_data = tuple(clean_db_value(row[col]) if col in row else None for col in db_columns)
+            data_tuples.append(row_data)
+        
+        # Prepare INSERT ... ON CONFLICT (UPSERT) query
+        # This will insert new records or update existing ones based on client_id
+        columns_str = ', '.join(db_columns)
+        
+        # Build update columns for ON CONFLICT (excluding client_id which is the conflict target)
+        update_columns = [col for col in db_columns if col != 'client_id']
+        update_str = ', '.join([f"{col} = EXCLUDED.{col}" for col in update_columns])
+        
+        upsert_query = f"""
+        INSERT INTO clients ({columns_str})
+        VALUES %s
+        ON CONFLICT (client_id) 
+        DO UPDATE SET 
+            {update_str},
+            db_updated_at = CURRENT_TIMESTAMP
+        """
+        
+        # Execute batch insert with execute_values for better performance
+        execute_values(cursor, upsert_query, data_tuples)
+        
+        conn.commit()
+        
+        rows_affected = cursor.rowcount
+        logger.info(f"Successfully inserted/updated {rows_affected} clients in database '{database_name}'")
+        
+        cursor.close()
+        conn.close()
+        
+        return {
+            'success': True,
+            'rows_processed': len(data_tuples),
+            'rows_affected': rows_affected
+        }
+        
+    except Exception as e:
+        logger.error(f"Error inserting clients data: {e}", exc_info=True)
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+
 def process_attachment_and_store(email_data: dict):
     """
     Process email attachments and store data in appropriate database
@@ -348,7 +632,7 @@ def process_attachment_and_store(email_data: dict):
             
             logger.info(f"Processing attachment: {filename} -> table: {table_name}")
             
-            # Only process appointments for now
+            # Process Appointments
             if table_name == 'appointments':
                 # Create the appointments table
                 if not create_appointments_table(clinic_name):
@@ -407,13 +691,75 @@ def process_attachment_and_store(email_data: dict):
                         "status": "error",
                         "message": insert_result.get('error', 'Unknown error')
                     })
+            
+            # Process Clients
+            elif table_name == 'clients':
+                # Create the clients table
+                if not create_clients_table(clinic_name):
+                    results.append({
+                        "filename": filename,
+                        "table": table_name,
+                        "database": clinic_name,
+                        "status": "error",
+                        "message": "Failed to create table"
+                    })
+                    continue
+                
+                # Check if attachment has data
+                attachment_data = attachment.get('data', '')
+                if not attachment_data:
+                    logger.warning(f"No data found in attachment: {filename}")
+                    results.append({
+                        "filename": filename,
+                        "table": table_name,
+                        "database": clinic_name,
+                        "status": "warning",
+                        "message": "No attachment data found"
+                    })
+                    continue
+                
+                # Parse Excel file
+                df = parse_excel_from_base64(attachment_data, filename)
+                if df is None or df.empty:
+                    results.append({
+                        "filename": filename,
+                        "table": table_name,
+                        "database": clinic_name,
+                        "status": "error",
+                        "message": "Failed to parse Excel file or file is empty"
+                    })
+                    continue
+                
+                # Insert data into database
+                insert_result = insert_clients_data(clinic_name, df)
+                
+                if insert_result['success']:
+                    results.append({
+                        "filename": filename,
+                        "table": table_name,
+                        "database": clinic_name,
+                        "status": "success",
+                        "rows_processed": insert_result['rows_processed'],
+                        "rows_affected": insert_result['rows_affected']
+                    })
+                    logger.info(f"Successfully imported {insert_result['rows_affected']} rows from {filename}")
+                else:
+                    results.append({
+                        "filename": filename,
+                        "table": table_name,
+                        "database": clinic_name,
+                        "status": "error",
+                        "message": insert_result.get('error', 'Unknown error')
+                    })
+            
+            # Skip other files
             else:
-                logger.info(f"Skipping non-appointment file: {filename}")
+                logger.info(f"Skipping unsupported file: {filename}")
                 results.append({
                     "filename": filename,
                     "table": table_name,
                     "status": "skipped",
-                    "reason": "Only appointments are processed currently"
+                    "reason": "File type not supported (only Appointment and Client List reports)"
                 })
         
         return {
@@ -439,7 +785,7 @@ async def root():
 async def receive_email(request: Request):
     """
     Endpoint to receive email data from Google Apps Script
-    Logs the complete email structure
+    Logs email metadata and processes attachments
     """
     try:
         # Get the raw body
@@ -452,18 +798,12 @@ async def receive_email(request: Request):
             logger.info("NEW EMAIL RECEIVED")
             logger.info("=" * 80)
             
-            # Log the entire structure
-            logger.info("Complete Email Structure:")
-            logger.info(json.dumps(email_data, indent=2, default=str))
-            
             # Log specific fields if they exist
             if isinstance(email_data, dict):
-                logger.info("\n--- Email Details ---")
                 logger.info(f"From: {email_data.get('from', 'N/A')}")
                 logger.info(f"To: {email_data.get('to', 'N/A')}")
                 logger.info(f"Subject: {email_data.get('subject', 'N/A')}")
                 logger.info(f"Date: {email_data.get('date', 'N/A')}")
-                logger.info(f"Body Length: {len(email_data.get('body', ''))}")
                 
                 if 'attachments' in email_data:
                     logger.info(f"Attachments: {len(email_data.get('attachments', []))}")
@@ -497,15 +837,14 @@ async def receive_email(request: Request):
             )
             
         except json.JSONDecodeError:
-            # If not JSON, log the raw body
-            logger.warning("Received non-JSON data:")
-            logger.info(f"Raw body: {body.decode('utf-8', errors='replace')}")
+            # If not JSON, log a warning without the body content
+            logger.warning("Received non-JSON data (body not logged for privacy)")
             
             return JSONResponse(
                 status_code=200,
                 content={
                     "status": "warning",
-                    "message": "Received non-JSON data, logged as raw text",
+                    "message": "Received non-JSON data",
                     "timestamp": datetime.now().isoformat()
                 }
             )
